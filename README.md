@@ -1,5 +1,3 @@
----
-
 # **Conflict-Aware RAG System — NebulaGears Assessment**
 
 **Author:** Ayush
