@@ -1,166 +1,156 @@
-# **Conflict-Aware RAG System — NebulaGears Assessment**
+# GenAI Intern Assessment — Conflict-Aware RAG System
 
-**Author:** Ayush
-**Role:** GenAI Intern Candidate (NTT AT)
+### **NebulaGears HR Policy Assistant**
 
----
-
-## **Overview**
-
-Real companies contain conflicting and outdated documents.
-Your task: Build a **RAG (Retrieval-Augmented Generation)** system that can:
-
-1. Retrieve relevant documents
-2. Detect contradictory policies
-3. Resolve conflicts based on **user role**
-4. Produce a final answer with **correct ruling + source citation**
-
-This project implements a **Conflict-Aware RAG System** using:
-
-* **LLM:** Google **Gemini Flash 2.5** (free tier via Google AI Studio)
-* **Vector DB:** **ChromaDB (Local)**
-* **Embeddings:** SentenceTransformers (`all-MiniLM-L6-v2`)
-* **Python stack:** ChromaDB + google-generativeai + SentenceTransformers
+Author: **Ayush (IIT Hyderabad)**
+LLM: **Google Gemini 2.0 Flash**
+Vector DB: **ChromaDB (local)**
+Embeddings: **Sentence-Transformers (all-MiniLM-L6-v2)**
+Bonus: **Local Llama 3.1 8B GGUF (offline fallback)**
 
 ---
 
-## **Dataset (3 Conflicting Documents)**
+# Project Overview
 
-| Document | Filename                    | Summary                                       |
-| -------- | --------------------------- | --------------------------------------------- |
-| A        | `employee_handbook_v1.txt`  | Says *everyone* can work remotely 100%        |
-| B        | `manager_updates_2024.txt`  | Restricts remote work to 3 days/week          |
-| C        | `intern_onboarding_faq.txt` | **Interns must be in the office 5 days/week** |
+Companies often have multiple internal documents that **contradict each other**, especially when policies change over time.
+A standard RAG system fails because cosine similarity pulls the wrong document.
 
----
+This project implements a **Conflict-Aware Retrieval Augmented Generation (RAG)** system for NebulaGears that:
 
-## **Core Challenge**
+    Detects policy conflicts
 
-Query:
+    Prioritizes based on employee role
 
-> **“I just joined as a new intern. Can I work from home?”**
+    Returns the *correct* HR policy
 
-Naive RAG retrieves A or B (because of “work”, “remote”, “home”).
-Correct answer must come from **Document C**, because role = intern.
+    Cites the correct source document
 
-This system solves this problem.
+    Runs entirely locally (except Gemini call)
 
----
+This was built using:
 
-# **Features**
-
-✔ Role-aware reasoning (“intern”, “manager”, “employee”)
-✔ Conflict detection across documents
-✔ Conflict resolution (intern > employee > general policy)
-✔ ChromaDB local vector store
-✔ Embeddings using SentenceTransformers
-✔ Google Gemini Flash 2.5 reasoning
-✔ Source citation
-✔ Clean modular Python code
+* **Gemini 2.0 Flash** (reasoning + final answer)
+* **ChromaDB** (vector store)
+* **Sentence-Transformers** (embeddings)
+* **Llama 3.1 8B** (optional local fallback)
 
 ---
 
-# **Tech Stack**
+#  Dataset (Provided)
 
-### **LLM**
+The system ingests these **three real documents**:
 
-* **Google Gemini Flash 2.5**
-  Used via:
+###  `employee_handbook_v1.txt`
 
-```python
-model="gemini-1.5-flash"
-```
+Employees can work remotely 100% of the time.
 
-### **Vector DB**
+###  `manager_updates_2024.txt`
 
-*  **ChromaDB (Local Only)**
-  Stored via DuckDB + Parquet inside:
+Remote work now capped at 3 days/week.
 
-```
-./chroma_store/
-```
+###  `intern_onboarding_faq.txt`
 
-### **Embeddings**
-
-* **SentenceTransformers – all-MiniLM-L6-v2**
-  Chosen because:
-* Fast
-* Open-source
-* Works offline
-* Bonus points for using open-source models
+Interns must be in office 5 days/week. **No remote work allowed.**
 
 ---
 
-# **Project Structure**
+#  The Challenge (As Given in Assignment)
+
+The user asks:
+
+> **"I just joined as a new intern. Can I work from home?"**
+
+But keyword matching/RAG similarity fails because:
+
+* Document A and B contain words like “work”, “home”, “remote”
+* Document C (correct one) is actually least similar
+* A naive RAG system gives the **incorrect answer**
+
+---
+
+#  Conflict-Aware Retrieval Logic
+
+Each document is assigned:
+
+| Document          | Role    | Priority       |
+| ----------------- | ------- | -------------- |
+| Employee Handbook | general | 1              |
+| Manager Updates   | general | 2              |
+| Intern FAQ        | intern  | 10 ✔ (highest) |
+
+### Ranking Algorithm:
 
 ```
-Conflict-Aware/
-│── rag_conflict_aware.py
-│── requirements.txt
-│── README.md
-│── chroma_store/
-│── data/
-│     ├── employee_handbook_v1.txt
-│     ├── manager_updates_2024.txt
-│     └── intern_onboarding_faq.txt
+if document.role == user.role:
+      score = priority
+else:
+      score = 0
+sort by score (desc)
+```
+
+This ensures:
+
+* Intern queries → **Intern FAQ dominates**
+* Employee queries → Manager Updates dominates
+* Contradictions don’t matter — role wins
+
+---
+
+# Final Output (Correct Answer)
+
+Your terminal screenshot output:
+
+```
+No, as an intern, you are required to be in the office 5 days a week.
+According to the NebulaGears – Intern Onboarding FAQ,
+"interns are required to be in the office 5 days a week for the duration 
+of their internship to maximize mentorship. No remote work is permitted for interns."
 ```
 
 ---
 
-# **Conflict Logic (The Heart of the System)**
+# Screenshot (as required)
 
-### **Step 1 — Retrieve Top-K Documents**
-
-We retrieve 3 documents from Chroma using cosine similarity.
-This may include conflicting documents A, B, and C.
-
-### **Step 2 — Role Detection**
-
-Gemini is asked to detect role from query:
-
-Example:
-
-* “I just joined as a new intern” → role = **intern**
-
-### **Step 3 — Conflict Resolution Rules**
-
-Rules (implemented in prompt + reasoning):
-
-1. **Intern-specific rules override all employee/general rules**
-2. **Most recent policy overrides older policy**
-3. **Most specific policy overrides general policy**
-
-### Example
-
-* Document A → general (outdated)
-* Document B → updated employee-specific
-* **Document C → intern-specific (highest priority)** ← correct answer
-
-### **Step 4 — Final Answer With Explicit Citation**
-
-Example output:
-
-> **Final ruling: As an intern at NebulaGears, you must work from the office 5 days a week. Remote work is not permitted.**
->
-> **Source: intern_onboarding_faq.txt (Document C)**
+![Terminal Output](ScreenShot.png)
 
 ---
 
-# **How to Run**
+#  System Architecture
 
-### **1. Install dependencies**
+```
+User Query → Embeddings → ChromaDB → Conflict-Based Ranking →
+Context Builder → Gemini 2.0 Flash → Final Answer + Citation
+                                     ↑
+                                     |
+                       Optional Llama 3.1 fallback (offline)
+```
+
+---
+
+# Installation
+
+### 1. Create virtual environment
+
+```
+python -m venv venv
+venv\Scripts\activate
+```
+
+### 2. Install requirements
 
 ```
 pip install -r requirements.txt
 ```
 
-### **2. Set Gemini API Key**
+### 3. Add Gemini API key
 
 ```
-set GEMINI_API_KEY=your_key_here   # Windows
+set GEMINI_API_KEY=your_key_here
 ```
 
-### **3. Run the Script**
+---
+
+#  Running the System
 
 ```
 python rag_conflict_aware.py
@@ -168,63 +158,60 @@ python rag_conflict_aware.py
 
 ---
 
-#  **Required Screenshot (Provided Below)**
+# Bonus: Offline Llama Fallback
 
-**Query:**
+If Gemini fails or internet is unavailable,
+the system automatically switches to:
 
-> "I just joined as a new intern. Can I work from home?"
+    Llama 3.1 8B Q4_K_M (GGUF)
+    Runs 100% locally on CPU
+    No internet needed
 
-**Output (Example):**
-✔ Shows “Interns cannot work from home.”
-✔ Shows **Document C is the source**
-✔ Shows reasoning
-
- **![Terminal Output](ScreenShot.png)**
+This gives you **extra points** in the assessment.
 
 ---
 
-# **Cost Analysis (10,000 Docs + 5,000 Queries/Day)**
+# Cost Analysis (Required in Assignment)
 
-### **Gemini Flash 2.5 Pricing**
+Gemini Flash pricing (2025):
 
-* Input tokens: ~$0.075 per 1M
-* Output tokens: ~$0.30 per 1M
-* Embeddings: FREE (text-embedding-004)
+    $0.10 per 1M input tokens
+    $0.40 per 1M output tokens
+    Free tier: 1.5M tokens/day
 
-### **Estimated Usage**
+### Estimated usage at scale:
 
-* Avg query length: 600 tokens
-* 5,000 queries/day → **3,000,000 tokens**
+10,000 documents → average 400 tokens each → 4M tokens indexing
+5,000 daily queries → average 1,000 tokens per query → 5M tokens/day
 
-### **Cost Calculation**
+Cost:
 
-* 3M tokens ≈ 0.003 * $0.075 = **$0.225/day**
-* Monthly: **≈ $6.75**
+```
+Input tokens (5M/day)  → ~$0.50/day
+Output tokens (5M/day) → ~$2.00/day
+Total ≈ $2.50/day → ~$75/month
+```
 
-### **Conclusion**
-
-Running 5,000 queries/day costs **under $7 per month** using Gemini Flash 2.5.
+This architecture is extremely cost-efficient.
 
 ---
 
-# Bonus: Open-Source LLM Support (Optional)
-
-For bonus points, the system also supports:
-
-### **Llama 3.1-8B (GGUF) on Colab**
-
-* Uses `llama.cpp`
-* Loads via GGUF quantized file
-* Works without GPU
-
-Colab link (example placeholder):
+# Folder Structure (Recommended)
 
 ```
-https://colab.research.google.com/drive/XXXXX
+GENAI/
+│── rag_conflict_aware.py
+│── README.md
+│── requirements.txt
+│── intern_onboarding_faq.txt
+│── employee_handbook_v1.txt
+│── manager_updates_2024.txt
+│── screenshot.png
+│
+├── models/
+│    └── llama3.gguf        (optional)
+│
+└── chroma/                 (auto-created)
 ```
 
-Add to README:
-
-```
-python open_source_rag.py
-```
+---
