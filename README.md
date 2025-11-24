@@ -96,7 +96,7 @@ This ensures:
 
 ---
 
-# 📌 Final Output (Correct Answer)
+# Final Output (Correct Answer)
 
 Your terminal screenshot output:
 
@@ -158,7 +158,7 @@ python rag_conflict_aware.py
 
 ---
 
-# ⭐ Bonus: Offline Llama Fallback
+# Bonus: Offline Llama Fallback
 
 If Gemini fails or internet is unavailable,
 the system automatically switches to:
