@@ -17,15 +17,15 @@ A standard RAG system fails because cosine similarity pulls the wrong document.
 
 This project implements a **Conflict-Aware Retrieval Augmented Generation (RAG)** system for NebulaGears that:
 
-    ###  Detects policy conflicts
+    Detects policy conflicts
 
-    ###  Prioritizes based on employee role
+    Prioritizes based on employee role
 
-    ###  Returns the *correct* HR policy
+    Returns the *correct* HR policy
 
-    ###  Cites the correct source document
+    Cites the correct source document
 
-    ###  Runs entirely locally (except Gemini call)
+    Runs entirely locally (except Gemini call)
 
 This was built using:
 
